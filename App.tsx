@@ -5,17 +5,24 @@ import Footer from './components/Footer';
 import ShopList from './components/ShopList';
 import SearchBar from './components/SearchBar';
 import AdminPage from './components/AdminPage';
-import ShopDetailPage from './components/ShopDetailPage'; // Import ShopDetailPage
+import ShopDetailPage from './components/ShopDetailPage';
 import { MassageShop } from './types';
 import { fetchShopsFromFirestore } from './firebase'; 
+
+// IMPORTANT SECURITY NOTE:
+// The password "m570318" is hardcoded here for simplicity in this demo.
+// This is NOT secure for a production environment as it can be easily found
+// in the client-side code. For real applications, use proper server-side
+// authentication.
+const ADMIN_PASSWORD = "m570318";
 
 const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [allShops, setAllShops] = useState<MassageShop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showAdminPage, setShowAdminPage] = useState<boolean>(false);
-  const [selectedShop, setSelectedShop] = useState<MassageShop | null>(null); // New state for selected shop
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false); // State for admin auth
+  const [selectedShop, setSelectedShop] = useState<MassageShop | null>(null);
 
   const loadShops = useCallback(async () => {
     try {
@@ -32,10 +39,11 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!showAdminPage) {
+    // Load shops if not in admin view or if admin view is closed
+    if (!isAdminAuthenticated) {
         loadShops();
     }
-  }, [loadShops, showAdminPage]);
+  }, [loadShops, isAdminAuthenticated]);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
@@ -48,6 +56,23 @@ const App: React.FC = () => {
   const handleCloseShopDetail = () => {
     setSelectedShop(null);
   };
+
+  const handleAdminAccessRequest = () => {
+    const passwordAttempt = window.prompt("관리자 페이지에 접속하려면 비밀번호를 입력하세요:");
+    if (passwordAttempt === ADMIN_PASSWORD) {
+      setIsAdminAuthenticated(true);
+    } else if (passwordAttempt !== null) { // User entered something but it was wrong
+      alert("비밀번호가 올바르지 않습니다.");
+    }
+    // If passwordAttempt is null (user pressed Cancel), do nothing.
+  };
+
+  const handleCloseAdminPage = () => {
+    setIsAdminAuthenticated(false);
+    // Reload shops when exiting admin page, in case changes were made
+    loadShops();
+  };
+
 
   const filteredShops = useMemo(() => {
     const cleanedSearchTerm = searchTerm.trim().toLowerCase();
@@ -79,8 +104,8 @@ const App: React.FC = () => {
     });
   }, [searchTerm, allShops]);
 
-  if (showAdminPage) {
-    return <AdminPage onImportSuccess={loadShops} onClose={() => setShowAdminPage(false)} />;
+  if (isAdminAuthenticated) {
+    return <AdminPage onImportSuccess={loadShops} onClose={handleCloseAdminPage} />;
   }
 
   if (selectedShop) {
@@ -88,7 +113,7 @@ const App: React.FC = () => {
       <ShopDetailPage 
         shop={selectedShop} 
         onClose={handleCloseShopDetail} 
-        onShopDataNeedsRefresh={loadShops} // Pass loadShops to refresh allShops data if review changes rating
+        onShopDataNeedsRefresh={loadShops}
       />
     );
   }
@@ -97,7 +122,6 @@ const App: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
       <Header />
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        {/* Hero Section */}
         <section className="text-center py-12 md:py-20 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl shadow-2xl mb-10 md:mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6 tracking-tight">
             내 주변 최고의 <span className="block sm:inline">마사지 샵</span> 찾기
@@ -153,7 +177,7 @@ const App: React.FC = () => {
       <Footer>
         <div className="mt-4">
             <button
-                onClick={() => setShowAdminPage(true)}
+                onClick={handleAdminAccessRequest} // Updated to call password prompt
                 className="text-pink-500 hover:text-pink-400 text-sm font-medium transition-colors duration-150"
                 aria-label="관리자 페이지로 이동"
             >
