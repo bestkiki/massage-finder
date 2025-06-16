@@ -28,4 +28,5 @@ export interface MassageShop {
   phoneNumber: string;
   operatingHours: string;
   detailedServices: Service[];
+  isRecommended?: boolean; // Added for recommended shops feature
 }

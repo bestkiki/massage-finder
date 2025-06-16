@@ -6,23 +6,30 @@ import ShopList from './components/ShopList';
 import SearchBar from './components/SearchBar';
 import AdminPage from './components/AdminPage';
 import ShopDetailPage from './components/ShopDetailPage';
+import RecommendedShopsBanner from './components/RecommendedShopsBanner'; // Import new component
 import { MassageShop } from './types';
 import { fetchShopsFromFirestore } from './firebase'; 
 
-// IMPORTANT SECURITY NOTE:
-// The password "m570318" is hardcoded here for simplicity in this demo.
-// This is NOT secure for a production environment as it can be easily found
-// in the client-side code. For real applications, use proper server-side
-// authentication.
 const ADMIN_PASSWORD = "m570318";
+const MAX_RECOMMENDED_BANNER_SHOPS = 8;
 
 const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [allShops, setAllShops] = useState<MassageShop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false); // State for admin auth
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false); 
   const [selectedShop, setSelectedShop] = useState<MassageShop | null>(null);
+  const [bannerShops, setBannerShops] = useState<MassageShop[]>([]);
+
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
 
   const loadShops = useCallback(async () => {
     try {
@@ -30,6 +37,16 @@ const App: React.FC = () => {
       setError(null);
       const shopsFromFirestore = await fetchShopsFromFirestore();
       setAllShops(shopsFromFirestore);
+
+      // Prepare banner shops
+      const recommended = shopsFromFirestore.filter(shop => shop.isRecommended);
+      if (recommended.length > 0) {
+        const shuffledRecommended = shuffleArray(recommended);
+        setBannerShops(shuffledRecommended.slice(0, MAX_RECOMMENDED_BANNER_SHOPS));
+      } else {
+        setBannerShops([]);
+      }
+
     } catch (e: any) {
       console.error("Error loading shops:", e?.message || String(e));
       setError('마사지 샵 정보를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
@@ -39,7 +56,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Load shops if not in admin view or if admin view is closed
     if (!isAdminAuthenticated) {
         loadShops();
     }
@@ -61,16 +77,14 @@ const App: React.FC = () => {
     const passwordAttempt = window.prompt("관리자 페이지에 접속하려면 비밀번호를 입력하세요:");
     if (passwordAttempt === ADMIN_PASSWORD) {
       setIsAdminAuthenticated(true);
-    } else if (passwordAttempt !== null) { // User entered something but it was wrong
+    } else if (passwordAttempt !== null) { 
       alert("비밀번호가 올바르지 않습니다.");
     }
-    // If passwordAttempt is null (user pressed Cancel), do nothing.
   };
 
   const handleCloseAdminPage = () => {
     setIsAdminAuthenticated(false);
-    // Reload shops when exiting admin page, in case changes were made
-    loadShops();
+    loadShops(); // Reload shops when exiting admin page
   };
 
 
@@ -105,6 +119,7 @@ const App: React.FC = () => {
   }, [searchTerm, allShops]);
 
   if (isAdminAuthenticated) {
+    // Pass loadShops to onImportSuccess in AdminPage so it can refresh App's state
     return <AdminPage onImportSuccess={loadShops} onClose={handleCloseAdminPage} />;
   }
 
@@ -113,7 +128,7 @@ const App: React.FC = () => {
       <ShopDetailPage 
         shop={selectedShop} 
         onClose={handleCloseShopDetail} 
-        onShopDataNeedsRefresh={loadShops}
+        onShopDataNeedsRefresh={loadShops} // Pass loadShops to refresh data after review
       />
     );
   }
@@ -133,6 +148,10 @@ const App: React.FC = () => {
             <SearchBar onSearch={handleSearch} />
           </div>
         </section>
+
+        {!isLoading && bannerShops.length > 0 && (
+          <RecommendedShopsBanner shops={bannerShops} onViewDetails={handleSelectShop} />
+        )}
 
         {isLoading && (
           <div className="text-center py-12">
@@ -158,7 +177,7 @@ const App: React.FC = () => {
         )}
 
         {!isLoading && !error && filteredShops.length === 0 && (
-          <div className="text-center py-12 bg-rose-50 border border-rose-100 rounded-lg p-6 max-w-2xl mx-auto shadow-lg">
+           <div className="text-center py-12 bg-rose-50 border border-rose-100 rounded-lg p-6 max-w-2xl mx-auto shadow-lg">
             <i className="fas fa-search text-5xl text-pink-300 mb-5"></i>
             {allShops.length === 0 && !searchTerm.trim() ? (
                <p className="text-2xl text-pink-700 font-semibold mb-2">등록된 마사지 샵 정보가 없습니다.</p>
@@ -177,7 +196,7 @@ const App: React.FC = () => {
       <Footer>
         <div className="mt-4">
             <button
-                onClick={handleAdminAccessRequest} // Updated to call password prompt
+                onClick={handleAdminAccessRequest} 
                 className="text-pink-500 hover:text-pink-400 text-sm font-medium transition-colors duration-150"
                 aria-label="관리자 페이지로 이동"
             >

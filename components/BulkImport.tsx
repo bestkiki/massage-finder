@@ -10,6 +10,15 @@ interface BulkImportProps {
   onImportSuccess: () => void;
 }
 
+// Helper to parse boolean strings
+const parseBoolean = (value: any): boolean => {
+  if (typeof value === 'boolean') return value;
+  if (value === null || value === undefined || value === "") return false;
+  const s = String(value).toLowerCase().trim();
+  return s === 'true' || s === '1' || s === 'yes' || s === 'y';
+};
+
+
 const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState<boolean>(false);
@@ -48,9 +57,8 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
       return [];
     } catch (e) {
       console.warn('Failed to parse detailedServices JSON:', jsonString, e);
-      let correctedJsonString = jsonString; // Initialize for the second catch block
+      let correctedJsonString = jsonString; 
       try {
-        // Attempt to fix common issue with single quotes in JSON
         correctedJsonString = jsonString.replace(/'/g, '"');
         const parsedAgain = JSON.parse(correctedJsonString);
         if (Array.isArray(parsedAgain)) {
@@ -60,7 +68,6 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
           })).filter(s => s.name !== 'N/A' || s.price !== 'N/A');
         }
       } catch (e2) {
-        // still failed
         console.warn('Failed to parse detailedServices JSON after attempting to correct quotes:', correctedJsonString, e2);
       }
       return [];
@@ -97,8 +104,8 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
         
         setStatusMessage(`총 ${jsonRows.length}개의 행을 Firestore에 저장합니다...`);
 
-        const shopsCollectionRef = db.collection('shops'); // Compat style
-        let batch = db.batch(); // Compat style
+        const shopsCollectionRef = db.collection('shops'); 
+        let batch = db.batch(); 
         let operationsInBatch = 0;
         let successfulImports = 0;
         const currentErrorDetails: string[] = [];
@@ -144,21 +151,22 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
             address: String(row.address || '').trim(),
             imageUrl: String(row.imageUrl || '').trim() || 'https://picsum.photos/seed/placeholder/600/400',
             rating: ratingValue,
-            reviewCount: reviewCountValue, // Added reviewCount
+            reviewCount: reviewCountValue,
             servicesPreview: row.servicesPreview ? String(row.servicesPreview).split(',').map(s => s.trim()).filter(s => s) : [],
             phoneNumber: String(row.phoneNumber || '').trim() || '정보 없음',
             operatingHours: String(row.operatingHours || '').trim() || '정보 없음',
             detailedServices: row.detailedServices ? parseDetailedServices(String(row.detailedServices)) : [],
+            isRecommended: parseBoolean(row.isRecommended), // Parse isRecommended
           };
           
-          const newShopRef = shopsCollectionRef.doc(); // Compat style
+          const newShopRef = shopsCollectionRef.doc(); 
           batch.set(newShopRef, shopData);
           operationsInBatch++;
           successfulImports++;
 
           if (operationsInBatch >= 499) { 
             await batch.commit();
-            batch = db.batch(); // Compat style
+            batch = db.batch(); 
             operationsInBatch = 0;
             setStatusMessage(`${successfulImports} / ${jsonRows.length}개 샵 처리 완료... 계속 진행 중...`);
           }
@@ -210,14 +218,15 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
         <li><strong>description</strong> (필수): 샵 설명 (텍스트)</li>
         <li><strong>address</strong> (필수): 주소 (텍스트)</li>
         <li><strong>imageUrl</strong>: 이미지 URL (텍스트, 비어있을 경우 기본 이미지 사용)</li>
-        <li><strong>rating</strong>: 평점 (숫자, 0-5 사이. 비어있거나 잘못된 경우 0으로 처리. 리뷰에 의해 갱신될 수 있음)</li>
-        <li><strong>reviewCount</strong>: 리뷰 수 (숫자. 비어있거나 잘못된 경우 0으로 처리. 리뷰에 의해 갱신됨)</li>
+        <li><strong>rating</strong>: 평점 (숫자, 0-5 사이. 비어있거나 잘못된 경우 0으로 처리)</li>
+        <li><strong>reviewCount</strong>: 리뷰 수 (숫자. 비어있거나 잘못된 경우 0으로 처리)</li>
         <li><strong>servicesPreview</strong>: 주요 서비스 (쉼표로 구분된 텍스트, 예: <code>타이 마사지,아로마 테라피</code>)</li>
         <li><strong>phoneNumber</strong>: 전화번호 (텍스트, 비어있을 경우 "정보 없음"으로 처리)</li>
         <li><strong>operatingHours</strong>: 운영 시간 (텍스트, 비어있을 경우 "정보 없음"으로 처리)</li>
         <li><strong>detailedServices</strong>: 상세 서비스 목록 (JSON 문자열 형식). 예:
           <pre className="bg-pink-100 p-2 rounded text-xs mt-1 overflow-x-auto"><code>{'[{"name":"발 마사지","price":"₩30,000"},{"name":"전신 마사지","price":"₩60,000"}]'}</code></pre>
         </li>
+        <li><strong>isRecommended</strong>: 추천 여부 (<code>TRUE</code>, <code>FALSE</code>, <code>1</code>, <code>0</code>, <code>yes</code>, <code>no</code> 등. 비어있거나 인식 불가능한 경우 <code>FALSE</code>로 처리)</li>
       </ul>
       <p className="mt-3 text-xs text-slate-500">
         * 필수 컬럼이 누락되거나 데이터 형식이 크게 잘못된 경우, 해당 행은 건너뛸 수 있습니다.<br/>

@@ -18,6 +18,25 @@
   }
 }
 </script>
+<style>
+  /* Optional: Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+  /* For line-clamp not working in all Tailwind versions/browsers */
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+</style>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body class="bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">

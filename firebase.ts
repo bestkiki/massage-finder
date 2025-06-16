@@ -59,6 +59,7 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
         phoneNumber: data.phoneNumber || '연락처 없음',
         operatingHours: data.operatingHours || '운영 시간 정보 없음',
         detailedServices: processedDetailedServices,
+        isRecommended: typeof data.isRecommended === 'boolean' ? data.isRecommended : false, // Fetch isRecommended
       });
     });
     return shops;
@@ -75,8 +76,9 @@ export const addShopToFirestore = async (shopData: Omit<MassageShop, 'id'>): Pro
   try {
     const docRef = await db.collection('shops').add({
       ...shopData,
-      rating: shopData.rating || 0, // Ensure initial rating is set
-      reviewCount: shopData.reviewCount || 0, // Ensure initial reviewCount is set
+      rating: shopData.rating || 0, 
+      reviewCount: shopData.reviewCount || 0,
+      isRecommended: shopData.isRecommended || false, // Add isRecommended
     });
     return docRef.id;
   } catch (error: any) {
@@ -88,10 +90,10 @@ export const addShopToFirestore = async (shopData: Omit<MassageShop, 'id'>): Pro
 export const updateShopInFirestore = async (shopId: string, shopData: Omit<MassageShop, 'id'>): Promise<void> => {
   try {
     const shopRef = db.collection('shops').doc(shopId);
-    // When updating, we might not want to overwrite reviewCount and average rating if they are managed by reviews.
-    // However, if the admin form allows editing 'rating', it implies they can set a base rating.
-    // For now, let's assume the form data is the source of truth for all fields it contains.
-    await shopRef.update(shopData);
+    await shopRef.update({
+        ...shopData,
+        isRecommended: shopData.isRecommended || false, // Update isRecommended
+    });
   } catch (error: any) {
     console.error(`Error updating shop ${shopId} in Firestore: `, error?.message || String(error));
     throw new Error(`샵 정보 업데이트 중 오류 발생: ${error.message}`);
@@ -130,46 +132,27 @@ export const addReviewToShop = async (
 
       const shopData = shopDoc.data() as MassageShop;
       
-      // Add the new review
       const reviewFullData = {
         ...reviewData,
         shopId: shopId,
         createdAt: firebase.firestore.FieldValue.serverTimestamp() as firebase.firestore.Timestamp,
       };
-      const tempReviewRef = reviewsRef.doc(); // Create a ref for the new review
+      const tempReviewRef = reviewsRef.doc(); 
       transaction.set(tempReviewRef, reviewFullData);
-
-
-      // Calculate new average rating and review count
-      // This is a simplified way. For very high traffic, reading all reviews per new review might be slow.
-      // A more scalable approach would be to increment a totalRatingSum and reviewCount.
-      // For this example, we'll fetch all reviews within the transaction for recalculation.
-      // However, fetching all reviews *within* a transaction for calculation can be tricky
-      // if the number of reviews is large, as transactions have limits.
-      // A more robust way to update aggregates is often using Firebase Cloud Functions.
-
-      // For client-side transaction:
-      // We assume `shopData.rating` holds the sum of all ratings and `shopData.reviewCount` holds the count.
-      // This is not what we have now. `rating` is average.
-      // Let's adjust: we'll fetch all reviews and recalculate.
-      // This part is complex to do correctly and performantly on the client in a transaction without dedicated sum fields.
-      // For now, let's simulate updating based on existing data and new review:
       
       const currentTotalRating = (shopData.rating || 0) * (shopData.reviewCount || 0);
       newReviewCount = (shopData.reviewCount || 0) + 1;
       const newTotalRating = currentTotalRating + reviewData.rating;
       newAverageRating = newTotalRating / newReviewCount;
       
-      // Ensure rating is within 0-5 and has one decimal place
       newAverageRating = Math.max(0, Math.min(5, parseFloat(newAverageRating.toFixed(1))));
-
 
       transaction.update(shopRef, {
         rating: newAverageRating,
         reviewCount: newReviewCount,
       });
       
-      return tempReviewRef.id; // Return the ID of the newly created review document
+      return tempReviewRef.id;
     });
     
     return { reviewId: newReviewRef, newAverageRating, newReviewCount };
@@ -194,7 +177,7 @@ export const fetchReviewsForShop = async (shopId: string): Promise<Review[]> => 
         authorName: data.authorName || "익명",
         rating: typeof data.rating === 'number' ? Math.max(1, Math.min(5, data.rating)) : 3,
         comment: data.comment || "",
-        createdAt: data.createdAt || firebase.firestore.Timestamp.now(), // Fallback if timestamp is missing
+        createdAt: data.createdAt || firebase.firestore.Timestamp.now(),
       });
     });
     return reviews;

@@ -15,17 +15,17 @@ const getInitialShopData = (): Omit<MassageShop, 'id'> => ({
   address: '',
   imageUrl: '',
   rating: 0,
-  reviewCount: 0, // Initialize reviewCount
+  reviewCount: 0,
   servicesPreview: [],
   phoneNumber: '',
   operatingHours: '',
-  detailedServices: [], // Initialize as empty array
+  detailedServices: [],
+  isRecommended: false, // Initialize isRecommended
 });
 
 const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingShop, onShopSaved, onCancelEdit }) => {
   const [shopData, setShopData] = useState<Omit<MassageShop, 'id'>>(getInitialShopData());
   const [servicesPreviewInput, setServicesPreviewInput] = useState<string>('');
-  // detailedServicesInput state is removed
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -40,34 +40,37 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
         address: existingShop.address,
         imageUrl: existingShop.imageUrl,
         rating: existingShop.rating,
-        reviewCount: existingShop.reviewCount || 0, // Ensure reviewCount is set
+        reviewCount: existingShop.reviewCount || 0,
         servicesPreview: existingShop.servicesPreview,
         phoneNumber: existingShop.phoneNumber,
         operatingHours: existingShop.operatingHours,
-        detailedServices: Array.isArray(existingShop.detailedServices) ? existingShop.detailedServices : [], // Ensure it's an array
+        detailedServices: Array.isArray(existingShop.detailedServices) ? existingShop.detailedServices : [],
+        isRecommended: existingShop.isRecommended || false, // Set isRecommended from existingShop
       });
       setServicesPreviewInput(existingShop.servicesPreview.join(', '));
-      // No need to set detailedServicesInput
     } else {
       setShopData(getInitialShopData());
       setServicesPreviewInput('');
-      // No need to set detailedServicesInput
     }
   }, [existingShop, isEditMode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setShopData(prev => ({ 
-        ...prev, 
-        [name]: name === 'rating' || name === 'reviewCount' ? parseFloat(value) : value 
-    }));
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+        const { checked } = e.target as HTMLInputElement;
+        setShopData(prev => ({ ...prev, [name]: checked }));
+    } else {
+        setShopData(prev => ({ 
+            ...prev, 
+            [name]: name === 'rating' || name === 'reviewCount' ? parseFloat(value) : value 
+        }));
+    }
   };
 
   const handleServicesPreviewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setServicesPreviewInput(e.target.value);
   };
 
-  // New handlers for dynamic detailedServices
   const handleDetailedServiceChange = (index: number, field: keyof Service, value: string) => {
     setShopData(prev => {
       const newDetailedServices = [...prev.detailedServices];
@@ -101,12 +104,10 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
       return;
     }
 
-    // Filter out empty services (both name and price are empty)
     const filteredDetailedServices = shopData.detailedServices.filter(
       s => s.name.trim() !== '' || s.price.trim() !== ''
     );
     
-    // Optional: Validate if any service has a name but no price, or vice-versa
     for (const service of filteredDetailedServices) {
         if ((service.name.trim() && !service.price.trim()) || (!service.name.trim() && service.price.trim())) {
             setError('상세 서비스 항목 중 이름 또는 가격만 입력된 경우가 있습니다. 이름과 가격을 모두 입력하거나 해당 항목을 삭제해주세요.');
@@ -114,23 +115,19 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
         }
     }
 
-
     const finalShopData: Omit<MassageShop, 'id'> = {
       ...shopData,
       imageUrl: shopData.imageUrl.trim() || 'https://picsum.photos/seed/defaultshop/600/400',
       servicesPreview: servicesPreviewInput.split(',').map(s => s.trim()).filter(s => s),
       detailedServices: filteredDetailedServices,
       rating: Math.max(0, Math.min(5, Number(shopData.rating) || 0)),
-      reviewCount: Number(shopData.reviewCount) || 0, // Ensure reviewCount is a number
+      reviewCount: Number(shopData.reviewCount) || 0,
+      isRecommended: shopData.isRecommended || false, // Ensure isRecommended is included
     };
 
     setIsSubmitting(true);
     try {
       if (isEditMode && existingShop) {
-        // For updates, typically reviewCount and rating are updated by review submissions.
-        // If admin edits rating, it's an override. Review count should likely be preserved.
-        // The current firebase.ts logic updates rating/reviewCount on new review.
-        // We pass the current shopData.reviewCount to ensure it's not lost if it was editable.
         await updateShopInFirestore(existingShop.id, finalShopData);
         setSuccessMessage('샵 정보가 성공적으로 업데이트되었습니다!');
       } else {
@@ -138,7 +135,7 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
         setSuccessMessage('샵 정보가 성공적으로 등록되었습니다!');
       }
       if (!isEditMode) {
-          setShopData(getInitialShopData()); // Resets detailedServices to []
+          setShopData(getInitialShopData()); 
           setServicesPreviewInput('');
       }
       if (onShopSaved) {
@@ -223,19 +220,11 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
         </div>
       </div>
 
-       {/* Optional: Display reviewCount (read-only or editable) if needed. For now, it's handled internally.
-       <div>
-         <label htmlFor="reviewCount" className={commonLabelClass}>리뷰 수</label>
-         <input type="number" name="reviewCount" id="reviewCount" value={shopData.reviewCount} onChange={handleChange} min="0" step="1" className={commonInputClass} />
-       </div>
-       */}
-
       <div>
         <label htmlFor="servicesPreviewInput" className={commonLabelClass}>주요 서비스 (쉼표로 구분)</label>
         <input type="text" name="servicesPreviewInput" id="servicesPreviewInput" value={servicesPreviewInput} onChange={handleServicesPreviewChange} className={commonInputClass} placeholder="예: 타이 마사지, 아로마 테라피, 발 마사지" />
       </div>
 
-      {/* Detailed Services Dynamic List */}
       <div>
         <label className={commonLabelClass}>상세 서비스</label>
         {shopData.detailedServices.map((service, index) => (
@@ -274,7 +263,19 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
           <i className="fas fa-plus mr-2"></i>상세 서비스 추가
         </button>
       </div>
-      {/* End Detailed Services Dynamic List */}
+      
+      <div className="mt-6">
+        <label className={`${commonLabelClass} flex items-center`}>
+          <input
+            type="checkbox"
+            name="isRecommended"
+            checked={shopData.isRecommended || false}
+            onChange={handleChange}
+            className="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 mr-2"
+          />
+          추천 샵으로 지정 (메인 페이지 추천 배너에 표시될 수 있습니다)
+        </label>
+      </div>
 
 
       <div className="flex space-x-4 pt-4 border-t border-pink-200">
