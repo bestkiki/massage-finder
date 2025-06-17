@@ -73,6 +73,13 @@ const App: React.FC = () => {
     setSelectedShop(null);
   };
 
+  const handleNavigateHome = () => {
+    setSelectedShop(null);
+    // Optionally, you might want to clear search term or scroll to top
+    // setSearchTerm('');
+    // window.scrollTo(0, 0);
+  };
+
   const handleAdminAccessRequest = () => {
     const passwordAttempt = window.prompt("관리자 페이지에 접속하려면 비밀번호를 입력하세요:");
     if (passwordAttempt === ADMIN_PASSWORD) {
@@ -135,7 +142,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
-      <Header />
+      <Header onNavigateHome={handleNavigateHome} />
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         <section className="text-center py-12 md:py-20 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl shadow-2xl mb-10 md:mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6 tracking-tight">

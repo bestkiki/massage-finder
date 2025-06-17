@@ -18,7 +18,7 @@ const ShopDetailPage: React.FC<ShopDetailPageProps> = ({ shop, onClose, onShopDa
   if (!shop) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-rose-50 p-4">
-        <Header />
+        <Header onNavigateHome={onClose} />
         <main className="flex-grow container mx-auto px-4 py-8 text-center">
           <i className="fas fa-exclamation-triangle text-5xl text-red-500 mb-4"></i>
           <h2 className="text-2xl font-semibold text-red-700 mb-2">샵 정보를 찾을 수 없습니다.</h2>
@@ -37,7 +37,7 @@ const ShopDetailPage: React.FC<ShopDetailPageProps> = ({ shop, onClose, onShopDa
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
-      <Header />
+      <Header onNavigateHome={onClose} />
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         <div className="max-w-4xl mx-auto">
           <button
