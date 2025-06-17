@@ -1,7 +1,7 @@
 
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
-import { MassageShop, Service, Review } from './types';
+import { MassageShop, Service, Review, ShopInquiry, ShopInquiryStatus } from './types';
 
 // Firebase configuration provided by the user
 const firebaseConfig = {
@@ -184,6 +184,72 @@ export const fetchReviewsForShop = async (shopId: string): Promise<Review[]> => 
   } catch (error: any) {
     console.error(`Error fetching reviews for shop ${shopId}: `, error?.message || String(error));
     throw new Error(`샵 리뷰를 불러오는 중 오류 발생: ${error.message}`);
+  }
+};
+
+// --- Shop Inquiry Functions ---
+export const addShopInquiryToFirestore = async (
+  inquiryData: Omit<ShopInquiry, 'id' | 'createdAt' | 'status'>
+): Promise<string> => {
+  try {
+    const docRef = await db.collection('shopInquiries').add({
+      ...inquiryData,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      status: 'new' as ShopInquiryStatus,
+    });
+    return docRef.id;
+  } catch (error: any) {
+    console.error("Error adding shop inquiry to Firestore: ", error?.message || String(error));
+    throw new Error(`샵 입점 문의 제출 중 오류 발생: ${error.message}`);
+  }
+};
+
+export const fetchShopInquiriesFromFirestore = async (): Promise<ShopInquiry[]> => {
+  const inquiriesCollectionRef = db.collection('shopInquiries').orderBy('createdAt', 'desc');
+  try {
+    const querySnapshot = await inquiriesCollectionRef.get();
+    const inquiries: ShopInquiry[] = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      inquiries.push({
+        id: doc.id,
+        ownerName: data.ownerName || '',
+        contactNumber: data.contactNumber || '',
+        email: data.email || '',
+        shopName: data.shopName || '',
+        shopLocation: data.shopLocation || '',
+        inquiryDetails: data.inquiryDetails || '',
+        createdAt: data.createdAt || firebase.firestore.Timestamp.now(),
+        status: data.status || 'new',
+      } as ShopInquiry);
+    });
+    return inquiries;
+  } catch (error: any) {
+    console.error("Error fetching shop inquiries from Firestore: ", error?.message || String(error));
+    throw new Error(`샵 입점 문의 목록을 불러오는 중 오류 발생: ${error.message}`);
+  }
+};
+
+export const updateShopInquiryStatusInFirestore = async (
+  inquiryId: string,
+  status: ShopInquiryStatus
+): Promise<void> => {
+  try {
+    const inquiryRef = db.collection('shopInquiries').doc(inquiryId);
+    await inquiryRef.update({ status });
+  } catch (error: any) {
+    console.error(`Error updating shop inquiry ${inquiryId} status: `, error?.message || String(error));
+    throw new Error(`입점 문의 상태 업데이트 중 오류 발생: ${error.message}`);
+  }
+};
+
+export const deleteShopInquiryFromFirestore = async (inquiryId: string): Promise<void> => {
+  try {
+    const inquiryRef = db.collection('shopInquiries').doc(inquiryId);
+    await inquiryRef.delete();
+  } catch (error: any) {
+    console.error(`Error deleting shop inquiry ${inquiryId}: `, error?.message || String(error));
+    throw new Error(`입점 문의 삭제 중 오류 발생: ${error.message}`);
   }
 };
 

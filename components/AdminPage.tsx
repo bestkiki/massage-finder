@@ -2,10 +2,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import BulkImport from './BulkImport';
 import ShopRegistrationForm from './ShopRegistrationForm';
-import { MassageShop, Service } from '../types';
-import { fetchShopsFromFirestore, deleteShopFromFirestore } from '../firebase';
+import { MassageShop, Service, ShopInquiry, ShopInquiryStatus } from '../types';
+import { 
+  fetchShopsFromFirestore, 
+  deleteShopFromFirestore,
+  fetchShopInquiriesFromFirestore,
+  updateShopInquiryStatusInFirestore,
+  deleteShopInquiryFromFirestore
+} from '../firebase';
 import SearchIcon from './icons/SearchIcon';
 import * as XLSX from 'xlsx'; // Import xlsx library
+import firebase from 'firebase/compat/app'; // For Timestamp type
 
 interface AdminPageProps {
   onImportSuccess: () => void;
@@ -19,6 +26,13 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
   const [editingShop, setEditingShop] = useState<MassageShop | null>(null);
   const [adminSearchTerm, setAdminSearchTerm] = useState<string>('');
   const [isExporting, setIsExporting] = useState<boolean>(false);
+
+  // State for Shop Inquiries
+  const [shopInquiries, setShopInquiries] = useState<ShopInquiry[]>([]);
+  const [isLoadingInquiries, setIsLoadingInquiries] = useState<boolean>(true);
+  const [inquiryError, setInquiryError] = useState<string | null>(null);
+  const [expandedInquiryId, setExpandedInquiryId] = useState<string | null>(null);
+
 
   const loadAdminShops = useCallback(async () => {
     setIsLoadingShops(true);
@@ -34,14 +48,29 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
     }
   }, []);
 
+  const loadShopInquiries = useCallback(async () => {
+    setIsLoadingInquiries(true);
+    setInquiryError(null);
+    try {
+      const inquiries = await fetchShopInquiriesFromFirestore();
+      setShopInquiries(inquiries);
+    } catch (e: any) {
+      console.error("Error loading shop inquiries:", e);
+      setInquiryError('샵 입점 문의 목록을 불러오는 데 실패했습니다.');
+    } finally {
+      setIsLoadingInquiries(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadAdminShops();
-  }, [loadAdminShops]);
+    loadShopInquiries();
+  }, [loadAdminShops, loadShopInquiries]);
 
   const handleShopSaved = () => {
     setEditingShop(null);
     loadAdminShops();
-    onImportSuccess(); // This calls the App.tsx loadShops
+    onImportSuccess(); 
     alert(editingShop ? '샵 정보가 성공적으로 업데이트되었습니다.' : '새로운 샵 정보가 성공적으로 등록되었습니다.');
   };
 
@@ -63,7 +92,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
         await deleteShopFromFirestore(shopId);
         alert(`'${shopName}' 샵 정보가 삭제되었습니다.`);
         loadAdminShops();
-        onImportSuccess(); // This calls the App.tsx loadShops
+        onImportSuccess(); 
       } catch (e: any) {
         console.error("Error deleting shop:", e);
         alert(`샵 정보 삭제 중 오류 발생: ${e.message}`);
@@ -104,7 +133,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
         phoneNumber: shop.phoneNumber,
         operatingHours: shop.operatingHours,
         detailedServices: JSON.stringify(shop.detailedServices),
-        isRecommended: shop.isRecommended ? 'TRUE' : 'FALSE', // Export isRecommended
+        isRecommended: shop.isRecommended ? 'TRUE' : 'FALSE',
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -124,6 +153,64 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
       setIsExporting(false);
     }
   }, [adminShops]);
+
+  // --- Shop Inquiry Management ---
+  const handleUpdateInquiryStatus = async (inquiryId: string, status: ShopInquiryStatus) => {
+    if (!window.confirm(`정말로 이 문의의 상태를 '${status === 'new' ? '새 문의' : status === 'read' ? '읽음' : '연락 완료'}'(으)로 변경하시겠습니까?`)) return;
+    try {
+      await updateShopInquiryStatusInFirestore(inquiryId, status);
+      alert('문의 상태가 업데이트되었습니다.');
+      loadShopInquiries(); // Refresh the list
+    } catch (e: any) {
+      alert(`상태 업데이트 실패: ${e.message}`);
+    }
+  };
+
+  const handleDeleteInquiry = async (inquiryId: string, shopName: string) => {
+    if (window.confirm(`'${shopName}' 관련 입점 문의를 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
+      try {
+        await deleteShopInquiryFromFirestore(inquiryId);
+        alert('입점 문의가 삭제되었습니다.');
+        loadShopInquiries(); // Refresh the list
+      } catch (e: any) {
+        alert(`문의 삭제 실패: ${e.message}`);
+      }
+    }
+  };
+
+  const toggleExpandInquiry = (inquiryId: string) => {
+    setExpandedInquiryId(expandedInquiryId === inquiryId ? null : inquiryId);
+  };
+  
+  const formatDate = (timestamp?: firebase.firestore.Timestamp): string => {
+    if (!timestamp) return 'N/A';
+    return timestamp.toDate().toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getStatusKorean = (status: ShopInquiryStatus) => {
+    switch (status) {
+      case 'new': return '새 문의';
+      case 'read': return '읽음';
+      case 'contacted': return '연락 완료';
+      default: return status;
+    }
+  };
+
+  const getStatusColorClass = (status: ShopInquiryStatus) => {
+    switch (status) {
+      case 'new': return 'bg-blue-100 text-blue-800';
+      case 'read': return 'bg-yellow-100 text-yellow-800';
+      case 'contacted': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
 
   return (
     <div className="min-h-screen flex flex-col bg-rose-50">
@@ -202,7 +289,6 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
             </div>
           </div>
         </section>
-
 
         <section className="bg-white p-6 md:p-8 rounded-xl shadow-xl border border-pink-100">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 border-b border-pink-200 pb-3">
@@ -293,6 +379,95 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
             </div>
           )}
         </section>
+
+        {/* Shop Inquiry Management Section */}
+        <section className="bg-white p-6 md:p-8 rounded-xl shadow-xl border border-pink-100">
+          <h2 className="text-2xl font-semibold text-pink-700 mb-6 border-b border-pink-200 pb-3 flex items-center">
+            <i className="fas fa-envelope-open-text mr-2 text-pink-500"></i>샵 입점 문의 관리 ({shopInquiries.length})
+          </h2>
+          {isLoadingInquiries && <p className="text-center text-pink-500 py-4">입점 문의 목록을 불러오는 중...</p>}
+          {inquiryError && <p className="text-center text-red-500 py-4">{inquiryError}</p>}
+          
+          {!isLoadingInquiries && !inquiryError && shopInquiries.length === 0 && (
+            <p className="text-center text-slate-500 py-4">새로운 입점 문의가 없습니다.</p>
+          )}
+
+          {!isLoadingInquiries && !inquiryError && shopInquiries.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-pink-200">
+                <thead className="bg-rose-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-pink-600 uppercase tracking-wider">접수일</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-pink-600 uppercase tracking-wider">샵 이름</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-pink-600 uppercase tracking-wider">문의자</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-pink-600 uppercase tracking-wider">상태</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-pink-600 uppercase tracking-wider">관리</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-pink-100">
+                  {shopInquiries.map((inquiry) => (
+                    <React.Fragment key={inquiry.id}>
+                      <tr>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{formatDate(inquiry.createdAt)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900">{inquiry.shopName}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600">{inquiry.ownerName}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColorClass(inquiry.status)}`}>
+                            {getStatusKorean(inquiry.status)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2">
+                          <button
+                            onClick={() => toggleExpandInquiry(inquiry.id)}
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            aria-label={`문의 '${inquiry.shopName}' 상세 보기`}
+                          >
+                            <i className={`fas ${expandedInquiryId === inquiry.id ? 'fa-chevron-up' : 'fa-chevron-down'} mr-1`}></i>
+                            {expandedInquiryId === inquiry.id ? '숨기기' : '상세'}
+                          </button>
+                           <select 
+                              value={inquiry.status}
+                              onChange={(e) => handleUpdateInquiryStatus(inquiry.id, e.target.value as ShopInquiryStatus)}
+                              className="text-xs p-1 border border-slate-300 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                              aria-label={`문의 '${inquiry.shopName}' 상태 변경`}
+                            >
+                              <option value="new">새 문의</option>
+                              <option value="read">읽음</option>
+                              <option value="contacted">연락 완료</option>
+                            </select>
+                          <button
+                            onClick={() => handleDeleteInquiry(inquiry.id, inquiry.shopName)}
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                            aria-label={`문의 '${inquiry.shopName}' 삭제`}
+                          >
+                            <i className="fas fa-trash-alt mr-1"></i>삭제
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedInquiryId === inquiry.id && (
+                        <tr>
+                          <td colSpan={5} className="p-0">
+                            <div className="p-4 bg-rose-50 border-l-4 border-pink-500">
+                              <h4 className="text-sm font-semibold text-pink-700 mb-2">문의 상세 내용:</h4>
+                              <p className="text-xs text-slate-700 mb-1"><strong>이메일:</strong> {inquiry.email}</p>
+                              <p className="text-xs text-slate-700 mb-1"><strong>연락처:</strong> {inquiry.contactNumber}</p>
+                              {inquiry.shopLocation && <p className="text-xs text-slate-700 mb-1"><strong>예상 위치:</strong> {inquiry.shopLocation}</p>}
+                              <p className="text-xs text-slate-700 whitespace-pre-wrap mt-2 pt-2 border-t border-pink-200">
+                                {inquiry.inquiryDetails}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+
       </main>
 
       <footer className="bg-gradient-to-r from-pink-600 to-rose-500 text-pink-100 py-8 text-center">

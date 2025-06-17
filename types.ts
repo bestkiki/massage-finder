@@ -30,3 +30,17 @@ export interface MassageShop {
   detailedServices: Service[];
   isRecommended?: boolean; // Added for recommended shops feature
 }
+
+export type ShopInquiryStatus = 'new' | 'read' | 'contacted';
+
+export interface ShopInquiry {
+  id: string;
+  ownerName: string;
+  contactNumber: string;
+  email: string;
+  shopName: string;
+  shopLocation?: string;
+  inquiryDetails: string;
+  createdAt: firebase.firestore.Timestamp;
+  status: ShopInquiryStatus;
+}

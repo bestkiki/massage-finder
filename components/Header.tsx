@@ -3,9 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 
 interface HeaderProps {
   onNavigateHome?: () => void;
+  onNavigateToInquiry?: () => void; // New prop for inquiry page
 }
 
-const Header: React.FC<HeaderProps> = ({ onNavigateHome }) => {
+const Header: React.FC<HeaderProps> = ({ onNavigateHome, onNavigateToInquiry }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -48,17 +49,16 @@ const Header: React.FC<HeaderProps> = ({ onNavigateHome }) => {
     if (onNavigateHome) {
       onNavigateHome();
     }
-    // Close mobile menu if open
     setIsMobileMenuOpen(false); 
   };
   
   const handleNavLinkClick = (e: React.MouseEvent, action?: () => void) => {
-    e.preventDefault(); // Prevent default if it's an anchor with #
+    e.preventDefault(); 
     if (action) {
         action();
     }
-    setIsMobileMenuOpen(false); // Close mobile menu on any link click
-};
+    setIsMobileMenuOpen(false); 
+  };
 
 
   return (
@@ -84,8 +84,8 @@ const Header: React.FC<HeaderProps> = ({ onNavigateHome }) => {
           <a href="#" onClick={(e) => handleNavLinkClick(e)} className={navLinkClasses}>
             인기 샵
           </a>
-          <a href="#" onClick={(e) => handleNavLinkClick(e)} className={contactButtonClasses}>
-            문의하기
+          <a href="#" onClick={(e) => handleNavLinkClick(e, onNavigateToInquiry)} className={contactButtonClasses}>
+            샵 입점 문의
           </a>
         </nav>
 
@@ -119,8 +119,8 @@ const Header: React.FC<HeaderProps> = ({ onNavigateHome }) => {
             <a href="#" onClick={(e) => handleNavLinkClick(e)} className={mobileNavLinkClasses} role="menuitem">
               인기 샵
             </a>
-            <a href="#" onClick={(e) => handleNavLinkClick(e)} className={mobileContactButtonClasses} role="menuitem">
-              문의하기
+            <a href="#" onClick={(e) => handleNavLinkClick(e, onNavigateToInquiry)} className={mobileContactButtonClasses} role="menuitem">
+              샵 입점 문의
             </a>
           </div>
         </div>

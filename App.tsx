@@ -6,21 +6,24 @@ import ShopList from './components/ShopList';
 import SearchBar from './components/SearchBar';
 import AdminPage from './components/AdminPage';
 import ShopDetailPage from './components/ShopDetailPage';
-import RecommendedShopsBanner from './components/RecommendedShopsBanner'; // Import new component
+import ShopInquiryPage from './components/ShopInquiryPage'; // Import new component
+import RecommendedShopsBanner from './components/RecommendedShopsBanner';
 import { MassageShop } from './types';
 import { fetchShopsFromFirestore } from './firebase'; 
 
 const ADMIN_PASSWORD = "m570318";
 const MAX_RECOMMENDED_BANNER_SHOPS = 8;
 
+type CurrentView = 'main' | 'shopDetail' | 'admin' | 'inquiry';
+
 const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [allShops, setAllShops] = useState<MassageShop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false); 
   const [selectedShop, setSelectedShop] = useState<MassageShop | null>(null);
   const [bannerShops, setBannerShops] = useState<MassageShop[]>([]);
+  const [currentView, setCurrentView] = useState<CurrentView>('main');
 
   const shuffleArray = <T,>(array: T[]): T[] => {
     const newArray = [...array];
@@ -38,7 +41,6 @@ const App: React.FC = () => {
       const shopsFromFirestore = await fetchShopsFromFirestore();
       setAllShops(shopsFromFirestore);
 
-      // Prepare banner shops
       const recommended = shopsFromFirestore.filter(shop => shop.isRecommended);
       if (recommended.length > 0) {
         const shuffledRecommended = shuffleArray(recommended);
@@ -56,41 +58,49 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAdminAuthenticated) {
+    if (currentView !== 'admin') { // Only load shops if not in admin view
         loadShops();
     }
-  }, [loadShops, isAdminAuthenticated]);
+  }, [loadShops, currentView]);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term);
+    setCurrentView('main'); // Ensure search brings back to main view
+    setSelectedShop(null); // Clear selected shop on new search
   };
 
   const handleSelectShop = (shop: MassageShop) => {
     setSelectedShop(shop);
+    setCurrentView('shopDetail');
   };
 
   const handleCloseShopDetail = () => {
     setSelectedShop(null);
+    setCurrentView('main');
   };
 
   const handleNavigateHome = () => {
     setSelectedShop(null);
-    // Optionally, you might want to clear search term or scroll to top
-    // setSearchTerm('');
+    setCurrentView('main');
     // window.scrollTo(0, 0);
+  };
+  
+  const handleNavigateToInquiry = () => {
+    setCurrentView('inquiry');
+    setSelectedShop(null); // Ensure no shop is selected when going to inquiry
   };
 
   const handleAdminAccessRequest = () => {
     const passwordAttempt = window.prompt("관리자 페이지에 접속하려면 비밀번호를 입력하세요:");
     if (passwordAttempt === ADMIN_PASSWORD) {
-      setIsAdminAuthenticated(true);
+      setCurrentView('admin');
     } else if (passwordAttempt !== null) { 
       alert("비밀번호가 올바르지 않습니다.");
     }
   };
 
   const handleCloseAdminPage = () => {
-    setIsAdminAuthenticated(false);
+    setCurrentView('main');
     loadShops(); // Reload shops when exiting admin page
   };
 
@@ -125,24 +135,28 @@ const App: React.FC = () => {
     });
   }, [searchTerm, allShops]);
 
-  if (isAdminAuthenticated) {
-    // Pass loadShops to onImportSuccess in AdminPage so it can refresh App's state
+  if (currentView === 'admin') {
     return <AdminPage onImportSuccess={loadShops} onClose={handleCloseAdminPage} />;
   }
 
-  if (selectedShop) {
+  if (currentView === 'shopDetail' && selectedShop) {
     return (
       <ShopDetailPage 
         shop={selectedShop} 
         onClose={handleCloseShopDetail} 
-        onShopDataNeedsRefresh={loadShops} // Pass loadShops to refresh data after review
+        onShopDataNeedsRefresh={loadShops}
       />
     );
   }
+  
+  if (currentView === 'inquiry') {
+    return <ShopInquiryPage onClose={handleNavigateHome} />;
+  }
 
+  // Main view
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-rose-50 via-pink-50 to-purple-50">
-      <Header onNavigateHome={handleNavigateHome} />
+      <Header onNavigateHome={handleNavigateHome} onNavigateToInquiry={handleNavigateToInquiry} />
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         <section className="text-center py-12 md:py-20 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl shadow-2xl mb-10 md:mb-16">
           <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6 tracking-tight">
