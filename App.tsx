@@ -6,15 +6,16 @@ import ShopList from './components/ShopList';
 import SearchBar from './components/SearchBar';
 import AdminPage from './components/AdminPage';
 import ShopDetailPage from './components/ShopDetailPage';
-import ShopInquiryPage from './components/ShopInquiryPage'; // Import new component
+import ShopInquiryPage from './components/ShopInquiryPage';
 import RecommendedShopsBanner from './components/RecommendedShopsBanner';
+import LoginPage from './components/LoginPage';
 import { MassageShop } from './types';
-import { fetchShopsFromFirestore } from './firebase'; 
+import { fetchShopsFromFirestore, onAuthChange, signOutAdmin } from './firebase';
+import type firebase from 'firebase/compat/app';
 
-const ADMIN_PASSWORD = "m570318";
 const MAX_RECOMMENDED_BANNER_SHOPS = 8;
 
-type CurrentView = 'main' | 'shopDetail' | 'admin' | 'inquiry';
+type CurrentView = 'main' | 'shopDetail' | 'admin' | 'inquiry' | 'login';
 
 const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -24,6 +25,25 @@ const App: React.FC = () => {
   const [selectedShop, setSelectedShop] = useState<MassageShop | null>(null);
   const [bannerShops, setBannerShops] = useState<MassageShop[]>([]);
   const [currentView, setCurrentView] = useState<CurrentView>('main');
+
+  // Auth State
+  const [authUser, setAuthUser] = useState<firebase.User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+
+  // Auth state change listener
+  useEffect(() => {
+    const unsubscribe = onAuthChange(user => {
+      setAuthUser(user);
+      setIsAuthLoading(false);
+      // If user logs out from admin page, redirect to main.
+      if (!user && currentView === 'admin') {
+        setCurrentView('main');
+      }
+    });
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [currentView]);
+
 
   const shuffleArray = <T,>(array: T[]): T[] => {
     const newArray = [...array];
@@ -58,7 +78,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (currentView !== 'admin') { // Only load shops if not in admin view
+    if (currentView !== 'admin' && currentView !== 'login') {
         loadShops();
     }
   }, [loadShops, currentView]);
@@ -82,7 +102,6 @@ const App: React.FC = () => {
   const handleNavigateHome = () => {
     setSelectedShop(null);
     setCurrentView('main');
-    // window.scrollTo(0, 0);
   };
   
   const handleNavigateToInquiry = () => {
@@ -90,12 +109,19 @@ const App: React.FC = () => {
     setSelectedShop(null); // Ensure no shop is selected when going to inquiry
   };
 
-  const handleAdminAccessRequest = () => {
-    const passwordAttempt = window.prompt("관리자 페이지에 접속하려면 비밀번호를 입력하세요:");
-    if (passwordAttempt === ADMIN_PASSWORD) {
-      setCurrentView('admin');
-    } else if (passwordAttempt !== null) { 
-      alert("비밀번호가 올바르지 않습니다.");
+  const handleLoginSuccess = () => {
+    setCurrentView('admin');
+  };
+
+  const handleLogout = async () => {
+    if (!window.confirm("정말로 로그아웃하시겠습니까?")) return;
+    try {
+      await signOutAdmin();
+      // The onAuthChange listener will handle setting authUser to null and redirecting to main view.
+      alert("성공적으로 로그아웃되었습니다.");
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("로그아웃 중 오류가 발생했습니다.");
     }
   };
 
@@ -135,8 +161,26 @@ const App: React.FC = () => {
     });
   }, [searchTerm, allShops]);
 
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-rose-50">
+         <div role="status" className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-pink-500 border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" aria-label="인증 정보 확인 중">
+         </div>
+         <p className="text-xl text-pink-700 mt-4 font-semibold ml-4">인증 정보를 확인하는 중입니다...</p>
+      </div>
+    );
+  }
+
+  if (currentView === 'login') {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} onClose={handleNavigateHome} />;
+  }
+
   if (currentView === 'admin') {
-    return <AdminPage onImportSuccess={loadShops} onClose={handleCloseAdminPage} />;
+    if (authUser) {
+      return <AdminPage onImportSuccess={loadShops} onClose={handleCloseAdminPage} />;
+    }
+    // If not authenticated, render the login page instead to force login.
+    return <LoginPage onLoginSuccess={handleLoginSuccess} onClose={handleNavigateHome} />;
   }
 
   if (currentView === 'shopDetail' && selectedShop) {
@@ -152,6 +196,42 @@ const App: React.FC = () => {
   if (currentView === 'inquiry') {
     return <ShopInquiryPage onClose={handleNavigateHome} />;
   }
+
+  // Admin-related buttons for the footer
+  const AdminFooterContent = () => {
+    if (authUser) {
+      return (
+        <div className="mt-4 flex justify-center items-center space-x-4">
+          <button
+            onClick={() => setCurrentView('admin')}
+            className="text-pink-500 hover:text-pink-400 text-sm font-medium transition-colors duration-150"
+            aria-label="관리자 페이지로 이동"
+          >
+            <i className="fas fa-user-shield mr-1.5"></i> 관리자 페이지
+          </button>
+          <span className="text-gray-300">|</span>
+          <button
+            onClick={handleLogout}
+            className="text-pink-500 hover:text-pink-400 text-sm font-medium transition-colors duration-150"
+            aria-label="로그아웃"
+          >
+            <i className="fas fa-sign-out-alt mr-1.5"></i> 로그아웃
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="mt-4">
+        <button
+          onClick={() => setCurrentView('login')}
+          className="text-pink-500 hover:text-pink-400 text-sm font-medium transition-colors duration-150"
+          aria-label="관리자 로그인 페이지로 이동"
+        >
+          <i className="fas fa-user-cog mr-1.5"></i> 관리자 로그인
+        </button>
+      </div>
+    );
+  };
 
   // Main view
   return (
@@ -215,15 +295,7 @@ const App: React.FC = () => {
         )}
       </main>
       <Footer>
-        <div className="mt-4">
-            <button
-                onClick={handleAdminAccessRequest} 
-                className="text-pink-500 hover:text-pink-400 text-sm font-medium transition-colors duration-150"
-                aria-label="관리자 페이지로 이동"
-            >
-                <i className="fas fa-user-cog mr-1.5"></i> 관리자 페이지
-            </button>
-        </div>
+        <AdminFooterContent />
       </Footer>
     </div>
   );

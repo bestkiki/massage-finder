@@ -1,6 +1,7 @@
 
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
+import 'firebase/compat/auth'; // Import auth module
 import { MassageShop, Service, Review, ShopInquiry, ShopInquiryStatus } from './types';
 
 // Firebase configuration provided by the user
@@ -24,6 +25,7 @@ if (!firebase.apps.length) {
 }
 
 const db: firebase.firestore.Firestore = firebase.firestore(app);
+const auth: firebase.auth.Auth = firebase.auth(app);
 
 export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
   const shopsCollectionRef = db.collection('shops');
@@ -253,5 +255,17 @@ export const deleteShopInquiryFromFirestore = async (inquiryId: string): Promise
   }
 };
 
+// --- Auth Functions ---
+export const signInAdmin = (email: string, password: string): Promise<firebase.auth.UserCredential> => {
+  return auth.signInWithEmailAndPassword(email, password);
+};
 
-export { db, app };
+export const signOutAdmin = (): Promise<void> => {
+  return auth.signOut();
+};
+
+export const onAuthChange = (callback: (user: firebase.User | null) => void) => {
+  return auth.onAuthStateChanged(callback);
+};
+
+export { db, app, auth };
