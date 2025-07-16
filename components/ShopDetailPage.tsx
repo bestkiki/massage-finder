@@ -121,7 +121,7 @@ const ShopDetailPage: React.FC<ShopDetailPageProps> = ({ shop, onClose, onShopDa
               )}
               
               {/* ShopReviews component */}
-              <ShopReviews shopId={shop.id} onShopDataNeedsRefresh={onShopDataNeedsRefresh} />
+              <ShopReviews shop={shop} onShopDataNeedsRefresh={onShopDataNeedsRefresh} />
             </div>
           </article>
         </div>
