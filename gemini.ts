@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, GenerateContentResponse } from "https://esm.sh/@google/genai@0.16.0?bundle-all";
+import { GoogleGenAI, Type, GenerateContentResponse } from "https://cdn.jsdelivr.net/npm/@google/genai@0.16.0/+esm";
 import { MassageShop, Review } from './types';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
