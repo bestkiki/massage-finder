@@ -51,7 +51,8 @@ const getFallbackReviews = (shop: MassageShop): Review[] => {
 
 
 export const generateDummyReviews = async (shop: MassageShop): Promise<Review[]> => {
-  if (!process.env.API_KEY) {
+  // Safely check for process and API_KEY to avoid ReferenceError in browser
+  if (typeof process === 'undefined' || !process.env || !process.env.API_KEY) {
     console.warn("API_KEY is not set. Returning fallback dummy reviews.");
     return getFallbackReviews(shop);
   }
