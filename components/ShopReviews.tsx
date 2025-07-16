@@ -23,7 +23,7 @@ const ShopReviews: React.FC<ShopReviewsProps> = ({ shopId, onShopDataNeedsRefres
       setReviews(fetchedReviews);
     } catch (e: any) {
       console.error("Error loading reviews:", e);
-      setError('리뷰를 불러오는 데 실패했습니다.');
+      setError(e.message || '알 수 없는 오류로 리뷰를 불러오는 데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -52,7 +52,15 @@ const ShopReviews: React.FC<ShopReviewsProps> = ({ shopId, onShopDataNeedsRefres
         </div>
       )}
       {!isLoading && error && (
-        <p className="text-red-500 text-sm bg-red-50 p-3 rounded-md">{error}</p>
+        <div className="text-red-500 text-sm bg-red-50 p-3 rounded-md text-center">
+          <p>{error}</p>
+          <button 
+            onClick={loadReviews} 
+            className="mt-2 text-xs text-white bg-pink-500 hover:bg-pink-600 font-semibold py-1 px-2 rounded-md transition-colors"
+          >
+            <i className="fas fa-sync-alt mr-1"></i> 다시 시도
+          </button>
+        </div>
       )}
       {!isLoading && !error && reviews.length === 0 && (
         <p className="text-gray-500 text-sm py-3 text-center bg-rose-50 rounded-md">

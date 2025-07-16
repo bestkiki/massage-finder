@@ -27,6 +27,23 @@ if (!firebase.apps.length) {
 const db: firebase.firestore.Firestore = firebase.firestore(app);
 const auth: firebase.auth.Auth = firebase.auth(app);
 
+// Enable Firestore offline persistence
+db.enablePersistence({ synchronizeTabs: true })
+  .then(() => {
+    console.log("Firestore offline persistence enabled.");
+  })
+  .catch((err) => {
+    if (err.code === 'failed-precondition') {
+      // This can happen if multiple tabs are open and persistence is already enabled in another tab.
+      // It's not a critical error for the app's functionality.
+      console.warn("Firestore persistence failed to enable, likely due to multiple open tabs. App will continue without offline persistence in this tab.");
+    } else if (err.code === 'unimplemented') {
+      // The browser is not supported for offline persistence.
+      console.warn("This browser does not support Firestore offline persistence.");
+    }
+  });
+
+
 export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
   const shopsCollectionRef = db.collection('shops');
   try {
@@ -69,7 +86,7 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
   } catch (error: any) {
     console.error("Error fetching shops from Firestore: ", error?.message || String(error));
     if (error.code === 'unavailable' || error.message.includes('Firestore backend is not available.')) {
-        throw new Error('Firebase Firestore service is unavailable. Check network connection and Firebase status.');
+        throw new Error('Firestore 서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요. 일부 데이터는 오프라인 상태로 표시될 수 있습니다.');
     }
     throw error; 
   }
@@ -202,6 +219,9 @@ export const fetchReviewsForShop = async (shopId: string): Promise<Review[]> => 
     return reviews;
   } catch (error: any) {
     console.error(`Error fetching reviews for shop ${shopId}: `, error?.message || String(error));
+    if (error.code === 'unavailable') {
+        throw new Error('서버에 연결할 수 없어 리뷰를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.');
+    }
     throw new Error(`샵 리뷰를 불러오는 중 오류 발생: ${error.message}`);
   }
 };
@@ -245,6 +265,9 @@ export const fetchShopInquiriesFromFirestore = async (): Promise<ShopInquiry[]> 
     return inquiries;
   } catch (error: any) {
     console.error("Error fetching shop inquiries from Firestore: ", error?.message || String(error));
+    if (error.code === 'unavailable') {
+      throw new Error('서버에 연결할 수 없어 입점 문의 목록을 불러오지 못했습니다. 인터넷 연결을 확인해주세요.');
+    }
     throw new Error(`샵 입점 문의 목록을 불러오는 중 오류 발생: ${error.message}`);
   }
 };

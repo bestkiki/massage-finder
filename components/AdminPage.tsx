@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import BulkImport from './BulkImport';
 import ShopRegistrationForm from './ShopRegistrationForm';
@@ -41,9 +42,10 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
     try {
       const shops = await fetchShopsFromFirestore();
       setAdminShops(shops);
-    } catch (e: any) {
+    } catch (e: any)
+{
       console.error("Error loading shops for admin:", e);
-      setShopError('샵 목록을 불러오는 데 실패했습니다.');
+      setShopError(e.message || '알 수 없는 오류로 샵 목록을 불러오는 데 실패했습니다.');
     } finally {
       setIsLoadingShops(false);
     }
@@ -57,7 +59,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
       setShopInquiries(inquiries);
     } catch (e: any) {
       console.error("Error loading shop inquiries:", e);
-      setInquiryError('샵 입점 문의 목록을 불러오는 데 실패했습니다.');
+      setInquiryError(e.message || '알 수 없는 오류로 입점 문의 목록을 불러오는 데 실패했습니다.');
     } finally {
       setIsLoadingInquiries(false);
     }
@@ -370,7 +372,17 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
                         </div>
                     </div>
                     {isLoadingShops && <p className="text-center text-pink-500 py-4">샵 목록을 불러오는 중...</p>}
-                    {shopError && <p className="text-center text-red-500 py-4">{shopError}</p>}
+                    {shopError && (
+                      <div className="text-center text-red-600 py-4 bg-red-50 border border-red-200 rounded-md p-4">
+                        <p>{shopError}</p>
+                        <button 
+                          onClick={loadAdminShops} 
+                          className="mt-2 text-sm text-white bg-pink-500 hover:bg-pink-600 font-semibold py-1 px-3 rounded-md transition-colors"
+                        >
+                          <i className="fas fa-sync-alt mr-2"></i>다시 시도
+                        </button>
+                      </div>
+                    )}
                     {!isLoadingShops && !shopError && adminShops.length === 0 && <p className="text-center text-pink-500 py-4">등록된 샵이 없습니다.</p>}
                     {!isLoadingShops && !shopError && adminShops.length > 0 && filteredAdminShops.length === 0 && <p className="text-center text-pink-500 py-4">"{adminSearchTerm}"에 대한 검색 결과가 없습니다.</p>}
                     {!isLoadingShops && !shopError && filteredAdminShops.length > 0 && (
@@ -420,7 +432,17 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
                     <i className="fas fa-envelope-open-text mr-2 text-pink-500"></i>샵 입점 문의 관리 ({shopInquiries.length})
                 </h2>
                 {isLoadingInquiries && <p className="text-center text-pink-500 py-4">입점 문의 목록을 불러오는 중...</p>}
-                {inquiryError && <p className="text-center text-red-500 py-4">{inquiryError}</p>}
+                {inquiryError && (
+                  <div className="text-center text-red-600 py-4 bg-red-50 border border-red-200 rounded-md p-4">
+                    <p>{inquiryError}</p>
+                    <button 
+                      onClick={loadShopInquiries} 
+                      className="mt-2 text-sm text-white bg-pink-500 hover:bg-pink-600 font-semibold py-1 px-3 rounded-md transition-colors"
+                    >
+                      <i className="fas fa-sync-alt mr-2"></i>다시 시도
+                    </button>
+                  </div>
+                )}
                 {!isLoadingInquiries && !inquiryError && shopInquiries.length === 0 && <p className="text-center text-slate-500 py-4">새로운 입점 문의가 없습니다.</p>}
                 {!isLoadingInquiries && !inquiryError && shopInquiries.length > 0 && (
                     <div className="overflow-x-auto">

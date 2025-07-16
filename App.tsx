@@ -71,7 +71,7 @@ const App: React.FC = () => {
 
     } catch (e: any) {
       console.error("Error loading shops:", e?.message || String(e));
-      setError('마사지 샵 정보를 불러오는 데 실패했습니다. 잠시 후 다시 시도해주세요.');
+      setError(e.message || '알 수 없는 오류로 샵 정보를 불러오는 데 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -267,9 +267,13 @@ const App: React.FC = () => {
             <i className="fas fa-exclamation-circle text-5xl text-red-500 mb-5"></i>
             <p className="text-2xl text-red-700 font-semibold mb-2">오류 발생</p>
             <p className="text-red-600 mb-4">{error}</p>
-            <p className="text-gray-500 text-sm">
-              문제가 지속되면 네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요.
-            </p>
+            <button
+              onClick={loadShops}
+              className="mt-4 bg-pink-500 hover:bg-pink-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-150 shadow-md hover:shadow-lg"
+            >
+              <i className="fas fa-sync-alt mr-2"></i>
+              다시 시도
+            </button>
           </div>
         )}
 
