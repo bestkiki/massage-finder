@@ -145,6 +145,19 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
             }
           }
           
+          let viewCountValue: number;
+          if (row.viewCount === "" || row.viewCount === undefined || row.viewCount === null) {
+              viewCountValue = 0;
+          } else {
+              const parsedViewCount = parseInt(String(row.viewCount), 10);
+              if (isNaN(parsedViewCount)) {
+                  currentErrorDetails.push(`행 ${rowIndexForError}: 'viewCount' 값 ("${String(row.viewCount)}")이 유효한 숫자가 아닙니다. 0으로 설정됩니다.`);
+                  viewCountValue = 0;
+              } else {
+                  viewCountValue = Math.max(0, parsedViewCount);
+              }
+          }
+
           const shopData: Omit<MassageShop, 'id'> = {
             name: String(row.name || '').trim(),
             description: String(row.description || '').trim(),
@@ -152,6 +165,7 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
             imageUrl: String(row.imageUrl || '').trim() || 'https://picsum.photos/seed/placeholder/600/400',
             rating: ratingValue,
             reviewCount: reviewCountValue,
+            viewCount: viewCountValue,
             servicesPreview: row.servicesPreview ? String(row.servicesPreview).split(',').map(s => s.trim()).filter(s => s) : [],
             phoneNumber: String(row.phoneNumber || '').trim() || '정보 없음',
             operatingHours: String(row.operatingHours || '').trim() || '정보 없음',
@@ -220,6 +234,7 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
         <li><strong>imageUrl</strong>: 이미지 URL (텍스트, 비어있을 경우 기본 이미지 사용)</li>
         <li><strong>rating</strong>: 평점 (숫자, 0-5 사이. 비어있거나 잘못된 경우 0으로 처리)</li>
         <li><strong>reviewCount</strong>: 리뷰 수 (숫자. 비어있거나 잘못된 경우 0으로 처리)</li>
+        <li><strong>viewCount</strong>: 조회수 (숫자. 비어있거나 잘못된 경우 0으로 처리)</li>
         <li><strong>servicesPreview</strong>: 주요 서비스 (쉼표로 구분된 텍스트, 예: <code>타이 마사지,아로마 테라피</code>)</li>
         <li><strong>phoneNumber</strong>: 전화번호 (텍스트, 비어있을 경우 "정보 없음"으로 처리)</li>
         <li><strong>operatingHours</strong>: 운영 시간 (텍스트, 비어있을 경우 "정보 없음"으로 처리)</li>

@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { MassageShop, Service } from '../types';
 import ShopReviews from './ShopReviews';
 import StarIcon from './icons/StarIcon';
@@ -7,6 +6,8 @@ import LocationPinIcon from './icons/LocationPinIcon';
 import PhoneIcon from './icons/PhoneIcon';
 import Header from './Header'; // Optional: for consistent header
 import Footer from './Footer'; // Optional: for consistent footer
+import { incrementShopViewCount } from '../firebase';
+
 
 interface ShopDetailPageProps {
   shop: MassageShop;
@@ -15,6 +16,12 @@ interface ShopDetailPageProps {
 }
 
 const ShopDetailPage: React.FC<ShopDetailPageProps> = ({ shop, onClose, onShopDataNeedsRefresh }) => {
+  useEffect(() => {
+    if (shop?.id) {
+      incrementShopViewCount(shop.id);
+    }
+  }, [shop?.id]);
+
   if (!shop) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-rose-50 p-4">
@@ -60,20 +67,26 @@ const ShopDetailPage: React.FC<ShopDetailPageProps> = ({ shop, onClose, onShopDa
                 <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800 mb-2 sm:mb-0 tracking-tight">
                   {shop.name}
                 </h1>
-                <div className="flex items-center bg-pink-500 text-white px-4 py-2 rounded-lg text-base font-semibold shadow-md">
-                  <StarIcon filled={true} className="w-5 h-5 inline-block mr-2" />
-                  {shop.rating.toFixed(1)}
-                  <span className="ml-2 text-xs opacity-80">({shop.reviewCount || 0} 리뷰)</span>
+                <div className="flex items-center space-x-2">
+                    <div className="flex items-center bg-black/40 text-white px-3 py-1.5 rounded-lg text-sm font-semibold backdrop-blur-sm shadow-md">
+                        <i className="fas fa-eye w-4 h-4 inline-block mr-2"></i>
+                        {shop.viewCount ? shop.viewCount.toLocaleString() : 0}
+                    </div>
+                    <div className="flex items-center bg-pink-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-md">
+                        <StarIcon filled={true} className="w-4 h-4 inline-block mr-1.5" />
+                        {shop.rating.toFixed(1)}
+                        <span className="ml-1.5 text-xs opacity-80">({shop.reviewCount || 0})</span>
+                    </div>
                 </div>
               </div>
 
-              <div className="mb-6 pb-6 border-b border-pink-100">
-                <p className="text-gray-500 text-base mb-3 flex items-start">
+              <div className="mb-6 pb-6 border-b border-pink-100 space-y-3">
+                <p className="text-gray-500 text-base flex items-start">
                   <LocationPinIcon className="w-5 h-5 mr-2 mt-0.5 text-gray-400 flex-shrink-0" />
                   {shop.address}
                 </p>
                 {shop.phoneNumber && shop.phoneNumber !== '정보 없음' && (
-                  <p className="text-gray-600 text-base mb-3 flex items-center">
+                  <p className="text-gray-600 text-base flex items-center">
                     <PhoneIcon className="w-5 h-5 mr-2 text-gray-400" />
                     <a href={`tel:${shop.phoneNumber}`} className="hover:text-pink-600 transition-colors">{shop.phoneNumber}</a>
                   </p>

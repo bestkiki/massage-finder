@@ -20,10 +20,16 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, onViewDetails }) => {
           src={shop.imageUrl || 'https://picsum.photos/seed/shop/600/400'} 
           alt={shop.name} 
         />
-        <div className="absolute top-4 right-4 bg-pink-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-md flex items-center">
-          <StarIcon filled={true} className="w-4 h-4 inline-block mr-1.5" />
-          {shop.rating.toFixed(1)} 
-          <span className="ml-1.5 text-xs opacity-80">({shop.reviewCount || 0} 리뷰)</span>
+        <div className="absolute top-3 right-3 flex items-center gap-x-2">
+            <div className="bg-black/40 text-white px-2.5 py-1 rounded-md text-xs font-semibold backdrop-blur-sm flex items-center shadow-md">
+                <i className="fas fa-eye w-3 h-3 inline-block mr-1.5" title="조회수"></i>
+                {shop.viewCount || 0}
+            </div>
+            <div className="bg-pink-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold shadow-md flex items-center">
+            <StarIcon filled={true} className="w-4 h-4 inline-block mr-1.5" />
+            {shop.rating.toFixed(1)} 
+            <span className="ml-1.5 text-xs opacity-80">({shop.reviewCount || 0})</span>
+            </div>
         </div>
       </div>
       

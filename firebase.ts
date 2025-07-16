@@ -57,6 +57,7 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
         address: data.address || '주소 없음',
         rating: typeof data.rating === 'number' ? data.rating : 0,
         reviewCount: typeof data.reviewCount === 'number' ? data.reviewCount : 0,
+        viewCount: typeof data.viewCount === 'number' ? data.viewCount : 0,
         servicesPreview: Array.isArray(data.servicesPreview) ? data.servicesPreview.filter(sp => typeof sp === 'string') : [],
         phoneNumber: data.phoneNumber || '연락처 없음',
         operatingHours: data.operatingHours || '운영 시간 정보 없음',
@@ -80,6 +81,7 @@ export const addShopToFirestore = async (shopData: Omit<MassageShop, 'id'>): Pro
       ...shopData,
       rating: shopData.rating || 0, 
       reviewCount: shopData.reviewCount || 0,
+      viewCount: shopData.viewCount || 0,
       isRecommended: shopData.isRecommended || false, // Add isRecommended
     });
     return docRef.id;
@@ -112,6 +114,21 @@ export const deleteShopFromFirestore = async (shopId: string): Promise<void> => 
     throw new Error(`샵 정보 삭제 중 오류 발생: ${error.message}`);
   }
 };
+
+export const incrementShopViewCount = async (shopId: string): Promise<void> => {
+  const shopRef = db.collection('shops').doc(shopId);
+  try {
+    // Atomically increment the view count.
+    await shopRef.update({
+      viewCount: firebase.firestore.FieldValue.increment(1)
+    });
+  } catch (error: any) {
+    // This action is non-critical for the user experience, so we can fail silently.
+    // However, we should log the error for debugging purposes.
+    console.warn(`Could not increment view count for shop ${shopId}:`, error.message);
+  }
+};
+
 
 // --- Review Functions ---
 

@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent, useEffect } from 'react';
 import { addShopToFirestore, updateShopInFirestore } from '../firebase';
 import { MassageShop, Service } from '../types';
@@ -16,6 +15,7 @@ const getInitialShopData = (): Omit<MassageShop, 'id'> => ({
   imageUrl: '',
   rating: 0,
   reviewCount: 0,
+  viewCount: 0,
   servicesPreview: [],
   phoneNumber: '',
   operatingHours: '',
@@ -41,6 +41,7 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
         imageUrl: existingShop.imageUrl,
         rating: existingShop.rating,
         reviewCount: existingShop.reviewCount || 0,
+        viewCount: existingShop.viewCount || 0,
         servicesPreview: existingShop.servicesPreview,
         phoneNumber: existingShop.phoneNumber,
         operatingHours: existingShop.operatingHours,
@@ -62,7 +63,7 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
     } else {
         setShopData(prev => ({ 
             ...prev, 
-            [name]: name === 'rating' || name === 'reviewCount' ? parseFloat(value) : value 
+            [name]: name === 'rating' || name === 'reviewCount' || name === 'viewCount' ? parseFloat(value) : value 
         }));
     }
   };
@@ -122,6 +123,7 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
       detailedServices: filteredDetailedServices,
       rating: Math.max(0, Math.min(5, Number(shopData.rating) || 0)),
       reviewCount: Number(shopData.reviewCount) || 0,
+      viewCount: Number(shopData.viewCount) || 0,
       isRecommended: shopData.isRecommended || false, // Ensure isRecommended is included
     };
 
