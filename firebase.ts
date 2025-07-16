@@ -160,23 +160,35 @@ export const incrementShopViewCount = async (shopId: string): Promise<void> => {
 export const populateLowViewCountsInFirestore = async (): Promise<number> => {
   const shopsCollectionRef = db.collection('shops');
   try {
-    // Find all shops where viewCount is 10 or less.
-    const querySnapshot = await shopsCollectionRef.where('viewCount', '<=', 10).get();
+    // Fetch all shops to correctly handle documents where 'viewCount' might be missing.
+    const querySnapshot = await shopsCollectionRef.get();
     
     if (querySnapshot.empty) {
       return 0; // No shops to update
     }
 
     const batch = db.batch();
+    let updatedCount = 0;
+    
     querySnapshot.forEach(doc => {
-      // Generate a new random view count between 50 and 200.
-      const newViewCount = Math.floor(Math.random() * 151) + 50;
-      const shopRef = db.collection('shops').doc(doc.id);
-      batch.update(shopRef, { viewCount: newViewCount });
+      const data = doc.data();
+      const currentViewCount = data.viewCount;
+
+      // Check if viewCount is missing, null, or <= 10
+      if (currentViewCount === undefined || currentViewCount === null || currentViewCount <= 10) {
+        // Generate a new random view count between 50 and 200.
+        const newViewCount = Math.floor(Math.random() * 151) + 50;
+        const shopRef = db.collection('shops').doc(doc.id);
+        batch.update(shopRef, { viewCount: newViewCount });
+        updatedCount++;
+      }
     });
 
-    await batch.commit();
-    return querySnapshot.size; // Return the number of shops updated
+    if (updatedCount > 0) {
+      await batch.commit();
+    }
+    
+    return updatedCount; // Return the number of shops updated
   } catch (error: any) {
     console.error("Error populating low view counts: ", error?.message || String(error));
     throw new Error(`조회수 채우기 중 오류 발생: ${error.message}`);
