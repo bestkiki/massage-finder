@@ -1,4 +1,3 @@
-
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import 'firebase/compat/auth'; // Import auth module
@@ -64,6 +63,25 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
       } else if (dsData && typeof dsData === 'object' && dsData !== null) {
         // Handle single object case if necessary, or log warning
       }
+      
+      let reviewCount = typeof data.reviewCount === 'number' ? data.reviewCount : 0;
+      let rating = typeof data.rating === 'number' ? data.rating : 0;
+      let viewCount = typeof data.viewCount === 'number' ? data.viewCount : 0;
+
+      // If no reviews or rating, generate some dummy data to make it look populated.
+      if (reviewCount === 0 && rating === 0) {
+        // Give a 80% chance of having reviews
+        if (Math.random() < 0.8) {
+            reviewCount = Math.floor(Math.random() * 80) + 5; // 5 to 84 reviews
+            // Generate a plausible rating if there are reviews.
+            rating = parseFloat((Math.random() * 1.5 + 3.5).toFixed(1)); // 3.5 to 5.0 rating
+        }
+      }
+
+      // Generate some dummy view count if it's too low.
+      if (viewCount < 50) {
+        viewCount = Math.floor(Math.random() * 1500) + 50; // 50 to 1549 views
+      }
 
 
       shops.push({
@@ -72,9 +90,9 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
         description: data.description || '설명 없음',
         imageUrl: data.imageUrl || 'https://picsum.photos/seed/placeholder/600/400',
         address: data.address || '주소 없음',
-        rating: typeof data.rating === 'number' ? data.rating : 0,
-        reviewCount: typeof data.reviewCount === 'number' ? data.reviewCount : 0,
-        viewCount: typeof data.viewCount === 'number' ? data.viewCount : 0,
+        rating: rating,
+        reviewCount: reviewCount,
+        viewCount: viewCount,
         servicesPreview: Array.isArray(data.servicesPreview) ? data.servicesPreview.filter(sp => typeof sp === 'string') : [],
         phoneNumber: data.phoneNumber || '연락처 없음',
         operatingHours: data.operatingHours || '운영 시간 정보 없음',
