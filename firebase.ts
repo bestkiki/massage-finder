@@ -66,8 +66,7 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
       
       let reviewCount = typeof data.reviewCount === 'number' ? data.reviewCount : 0;
       let rating = typeof data.rating === 'number' ? data.rating : 0;
-      let viewCount = typeof data.viewCount === 'number' ? data.viewCount : 0;
-
+      
       // If no reviews or rating, generate some dummy data to make it look populated.
       if (reviewCount === 0 && rating === 0) {
         // Give a 80% chance of having reviews
@@ -78,12 +77,6 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
         }
       }
 
-      // Generate some dummy view count if it's too low.
-      if (viewCount < 50) {
-        viewCount = Math.floor(Math.random() * 1500) + 50; // 50 to 1549 views
-      }
-
-
       shops.push({
         id: documentSnapshot.id,
         name: data.name || '이름 없음',
@@ -92,7 +85,7 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
         address: data.address || '주소 없음',
         rating: rating,
         reviewCount: reviewCount,
-        viewCount: viewCount,
+        viewCount: typeof data.viewCount === 'number' ? data.viewCount : 0,
         servicesPreview: Array.isArray(data.servicesPreview) ? data.servicesPreview.filter(sp => typeof sp === 'string') : [],
         phoneNumber: data.phoneNumber || '연락처 없음',
         operatingHours: data.operatingHours || '운영 시간 정보 없음',
@@ -161,6 +154,32 @@ export const incrementShopViewCount = async (shopId: string): Promise<void> => {
     // This action is non-critical for the user experience, so we can fail silently.
     // However, we should log the error for debugging purposes.
     console.warn(`Could not increment view count for shop ${shopId}:`, error.message);
+  }
+};
+
+export const populateLowViewCountsInFirestore = async (): Promise<number> => {
+  const shopsCollectionRef = db.collection('shops');
+  try {
+    // Find all shops where viewCount is 10 or less.
+    const querySnapshot = await shopsCollectionRef.where('viewCount', '<=', 10).get();
+    
+    if (querySnapshot.empty) {
+      return 0; // No shops to update
+    }
+
+    const batch = db.batch();
+    querySnapshot.forEach(doc => {
+      // Generate a new random view count between 50 and 200.
+      const newViewCount = Math.floor(Math.random() * 151) + 50;
+      const shopRef = db.collection('shops').doc(doc.id);
+      batch.update(shopRef, { viewCount: newViewCount });
+    });
+
+    await batch.commit();
+    return querySnapshot.size; // Return the number of shops updated
+  } catch (error: any) {
+    console.error("Error populating low view counts: ", error?.message || String(error));
+    throw new Error(`조회수 채우기 중 오류 발생: ${error.message}`);
   }
 };
 

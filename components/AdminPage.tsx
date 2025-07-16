@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import BulkImport from './BulkImport';
 import ShopRegistrationForm from './ShopRegistrationForm';
@@ -8,7 +7,8 @@ import {
   deleteShopFromFirestore,
   fetchShopInquiriesFromFirestore,
   updateShopInquiryStatusInFirestore,
-  deleteShopInquiryFromFirestore
+  deleteShopInquiryFromFirestore,
+  populateLowViewCountsInFirestore
 } from '../firebase';
 import SearchIcon from './icons/SearchIcon';
 import * as XLSX from 'xlsx'; // Import xlsx library
@@ -29,6 +29,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
   const [editingShop, setEditingShop] = useState<MassageShop | null>(null);
   const [adminSearchTerm, setAdminSearchTerm] = useState<string>('');
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [isPopulatingViews, setIsPopulatingViews] = useState<boolean>(false);
 
   // State for Shop Inquiries
   const [shopInquiries, setShopInquiries] = useState<ShopInquiry[]>([]);
@@ -180,6 +181,28 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
     }
   }, [adminShops]);
 
+    const handlePopulateViewCounts = async () => {
+        if (!window.confirm("조회수가 10 이하인 모든 샵의 조회수를 임의의 숫자로 업데이트합니다. 이 작업은 새로 등록된 샵에 활기를 불어넣기 위해 사용됩니다. 실행하시겠습니까?")) {
+            return;
+        }
+        setIsPopulatingViews(true);
+        try {
+            const updatedCount = await populateLowViewCountsInFirestore();
+            if (updatedCount > 0) {
+                alert(`${updatedCount}개의 샵 조회수를 성공적으로 업데이트했습니다.`);
+                loadAdminShops();
+                onImportSuccess();
+            } else {
+                alert("조회수를 업데이트할 샵이 없습니다. (모든 샵의 조회수가 10을 초과합니다)");
+            }
+        } catch (error: any) {
+            alert(`오류 발생: ${error.message}`);
+        } finally {
+            setIsPopulatingViews(false);
+        }
+    };
+
+
   // --- Shop Inquiry Management ---
   const handleUpdateInquiryStatus = async (inquiryId: string, status: ShopInquiryStatus) => {
     if (!window.confirm(`정말로 이 문의의 상태를 '${status === 'new' ? '새 문의' : status === 'read' ? '읽음' : '연락 완료'}'(으)로 변경하시겠습니까?`)) return;
@@ -301,43 +324,70 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
-                        <h3 className="text-xl font-semibold text-pink-600 mb-3 flex items-center">
-                            <i className="fas fa-file-upload mr-2"></i>샵 정보 대량 등록 (Excel/CSV)
-                        </h3>
-                        <BulkImport onImportSuccess={() => {
-                            alert('샵 정보가 성공적으로 대량 등록되었으며, 목록이 업데이트됩니다.');
-                            loadAdminShops(); 
-                            onImportSuccess(); 
-                        }} />
+                            <BulkImport onImportSuccess={() => {
+                                alert('샵 정보가 성공적으로 대량 등록되었으며, 목록이 업데이트됩니다.');
+                                loadAdminShops(); 
+                                onImportSuccess(); 
+                            }} />
                         </div>
                         <div>
-                        <h3 className="text-xl font-semibold text-pink-600 mb-3 flex items-center">
-                            <i className="fas fa-file-download mr-2"></i>샵 정보 Excel로 내보내기
-                        </h3>
-                        <p className="text-sm text-slate-600 mb-4">
-                            현재 등록된 모든 샵 정보를 Excel 파일로 다운로드합니다. 이 파일은 대량 등록 양식과 호환됩니다.
+                            <h3 className="text-xl font-semibold text-pink-600 mb-3 flex items-center">
+                                <i className="fas fa-file-download mr-2"></i>샵 정보 Excel로 내보내기
+                            </h3>
+                            <p className="text-sm text-slate-600 mb-4">
+                                현재 등록된 모든 샵 정보를 Excel 파일로 다운로드합니다. 이 파일은 대량 등록 양식과 호환됩니다.
+                            </p>
+                            <button
+                                onClick={handleExportShops}
+                                disabled={isExporting || adminShops.length === 0}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition-all duration-150 ease-in-out disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                                {isExporting ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    내보내는 중...
+                                </>
+                                ) : (
+                                <><i className="fas fa-file-excel mr-2"></i>전체 샵 정보 내보내기</>
+                                )}
+                            </button>
+                            {adminShops.length === 0 && !isLoadingShops && (
+                                <p className="mt-2 text-xs text-slate-500">내보낼 샵 정보가 없습니다.</p>
+                            )}
+                        </div>
+                    </div>
+                </section>
+                
+                <section className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-slate-200 mt-12">
+                    <h2 className="text-2xl font-semibold text-pink-700 mb-6 border-b border-pink-200 pb-3 flex items-center">
+                        <i className="fas fa-magic mr-2 text-pink-500"></i>데이터 유틸리티
+                    </h2>
+                    <div>
+                        <h3 className="text-lg font-semibold text-pink-600">초기 조회수 채우기</h3>
+                        <p className="text-sm text-slate-600 my-2">
+                            조회수가 10 이하인 샵들의 조회수를 임의의 숫자(50 ~ 200)로 채워 활성화된 것처럼 보이게 합니다. 
+                            이 작업은 새로 등록된 샵들의 초기 노출을 돕기 위해 사용됩니다.
                         </p>
                         <button
-                            onClick={handleExportShops}
-                            disabled={isExporting || adminShops.length === 0}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition-all duration-150 ease-in-out disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center"
+                          onClick={handlePopulateViewCounts}
+                          disabled={isPopulatingViews}
+                          className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75 transition-all duration-150 ease-in-out disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center"
                         >
-                            {isExporting ? (
+                          {isPopulatingViews ? (
                             <>
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                내보내는 중...
+                              </svg>
+                              처리 중...
                             </>
-                            ) : (
-                            <><i className="fas fa-file-excel mr-2"></i>전체 샵 정보 내보내기</>
-                            )}
+                          ) : (
+                            <><i className="fas fa-sort-numeric-up-alt mr-2"></i>조회수 채우기 실행</>
+                          )}
                         </button>
-                        {adminShops.length === 0 && !isLoadingShops && (
-                            <p className="mt-2 text-xs text-slate-500">내보낼 샵 정보가 없습니다.</p>
-                        )}
-                        </div>
                     </div>
                 </section>
 
