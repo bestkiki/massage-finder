@@ -153,6 +153,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
         description: shop.description,
         address: shop.address,
         imageUrl: shop.imageUrl,
+        youtubeUrl: shop.youtubeUrl || '',
         rating: shop.rating,
         reviewCount: shop.reviewCount,
         viewCount: shop.viewCount,
@@ -163,7 +164,9 @@ const AdminPage: React.FC<AdminPageProps> = ({ onImportSuccess, onClose }) => {
         isRecommended: shop.isRecommended ? 'TRUE' : 'FALSE',
       }));
 
-      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport, {header: [
+        "name", "description", "address", "imageUrl", "youtubeUrl", "rating", "reviewCount", "viewCount", "servicesPreview", "phoneNumber", "operatingHours", "detailedServices", "isRecommended"
+      ]});
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Shops");
 

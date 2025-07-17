@@ -29,6 +29,7 @@ export interface MassageShop {
   operatingHours: string;
   detailedServices: Service[];
   isRecommended?: boolean; // Added for recommended shops feature
+  youtubeUrl?: string; // Added for YouTube video feature
 }
 
 export type ShopInquiryStatus = 'new' | 'read' | 'contacted';

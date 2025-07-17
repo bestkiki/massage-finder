@@ -170,7 +170,8 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
             phoneNumber: String(row.phoneNumber || '').trim() || '정보 없음',
             operatingHours: String(row.operatingHours || '').trim() || '정보 없음',
             detailedServices: row.detailedServices ? parseDetailedServices(String(row.detailedServices)) : [],
-            isRecommended: parseBoolean(row.isRecommended), // Parse isRecommended
+            isRecommended: parseBoolean(row.isRecommended),
+            youtubeUrl: String(row.youtubeUrl || '').trim(),
           };
           
           const newShopRef = shopsCollectionRef.doc(); 
@@ -232,6 +233,7 @@ const BulkImport = ({ onImportSuccess }: BulkImportProps): JSX.Element => {
         <li><strong>description</strong> (필수): 샵 설명 (텍스트)</li>
         <li><strong>address</strong> (필수): 주소 (텍스트)</li>
         <li><strong>imageUrl</strong>: 이미지 URL (텍스트, 비어있을 경우 기본 이미지 사용)</li>
+        <li><strong>youtubeUrl</strong>: YouTube 영상 URL (텍스트, 비어있을 경우 표시되지 않음)</li>
         <li><strong>rating</strong>: 평점 (숫자, 0-5 사이. 비어있거나 잘못된 경우 0으로 처리)</li>
         <li><strong>reviewCount</strong>: 리뷰 수 (숫자. 비어있거나 잘못된 경우 0으로 처리)</li>
         <li><strong>viewCount</strong>: 조회수 (숫자. 비어있거나 잘못된 경우 0으로 처리)</li>

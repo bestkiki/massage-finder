@@ -8,12 +8,14 @@ import AdminPage from './components/AdminPage';
 import ShopDetailPage from './components/ShopDetailPage';
 import ShopInquiryPage from './components/ShopInquiryPage';
 import RecommendedShopsBanner from './components/RecommendedShopsBanner';
+import YouTubeVideoBanner from './components/YouTubeVideoBanner';
 import LoginPage from './components/LoginPage';
 import { MassageShop } from './types';
 import { fetchShopsFromFirestore, onAuthChange, signOutAdmin } from './firebase';
 import type firebase from 'firebase/compat/app';
 
 const MAX_RECOMMENDED_BANNER_SHOPS = 8;
+const MAX_VIDEO_BANNER_SHOPS = 5;
 
 type CurrentView = 'main' | 'shopDetail' | 'admin' | 'inquiry' | 'login';
 
@@ -24,6 +26,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedShop, setSelectedShop] = useState<MassageShop | null>(null);
   const [bannerShops, setBannerShops] = useState<MassageShop[]>([]);
+  const [videoBannerShops, setVideoBannerShops] = useState<MassageShop[]>([]);
   const [currentView, setCurrentView] = useState<CurrentView>('main');
 
   // Auth State
@@ -61,6 +64,7 @@ const App: React.FC = () => {
       const shopsFromFirestore = await fetchShopsFromFirestore();
       setAllShops(shopsFromFirestore);
 
+      // Recommended shops banner logic
       const recommended = shopsFromFirestore.filter(shop => shop.isRecommended);
       if (recommended.length > 0) {
         const shuffledRecommended = shuffleArray(recommended);
@@ -68,6 +72,16 @@ const App: React.FC = () => {
       } else {
         setBannerShops([]);
       }
+
+      // YouTube video banner logic
+      const shopsWithVideos = shopsFromFirestore.filter(shop => shop.youtubeUrl && shop.youtubeUrl.trim() !== '');
+       if (shopsWithVideos.length > 0) {
+        const shuffledVideos = shuffleArray(shopsWithVideos);
+        setVideoBannerShops(shuffledVideos.slice(0, MAX_VIDEO_BANNER_SHOPS));
+      } else {
+        setVideoBannerShops([]);
+      }
+
 
     } catch (e: any) {
       console.error("Error loading shops:", e?.message || String(e));
@@ -252,6 +266,10 @@ const App: React.FC = () => {
 
         {!isLoading && bannerShops.length > 0 && (
           <RecommendedShopsBanner shops={bannerShops} onViewDetails={handleSelectShop} />
+        )}
+        
+        {!isLoading && videoBannerShops.length > 0 && (
+          <YouTubeVideoBanner shops={videoBannerShops} onViewDetails={handleSelectShop} />
         )}
 
         {isLoading && (

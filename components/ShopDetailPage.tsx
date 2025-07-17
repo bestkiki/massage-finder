@@ -8,12 +8,29 @@ import Header from './Header'; // Optional: for consistent header
 import Footer from './Footer'; // Optional: for consistent footer
 import { incrementShopViewCount } from '../firebase';
 
-
 interface ShopDetailPageProps {
   shop: MassageShop;
   onClose: () => void;
   onShopDataNeedsRefresh: () => void;
 }
+
+const getYoutubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  let videoId = null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+
+  if (match && match[2].length === 11) {
+    videoId = match[2];
+  } else {
+    const shortsMatch = url.match(/\/shorts\/([^#&?]+)/);
+    if (shortsMatch && shortsMatch[1]) {
+      videoId = shortsMatch[1];
+    }
+  }
+  return videoId;
+};
+
 
 const ShopDetailPage: React.FC<ShopDetailPageProps> = ({ shop, onClose, onShopDataNeedsRefresh }) => {
   const [currentShopData, setCurrentShopData] = useState<MassageShop>(shop);
@@ -35,6 +52,8 @@ const ShopDetailPage: React.FC<ShopDetailPageProps> = ({ shop, onClose, onShopDa
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shop?.id]); // This effect should run only once when the shop ID changes
+
+  const videoId = getYoutubeVideoId(currentShopData.youtubeUrl || '');
 
   if (!currentShopData) {
     return (
@@ -119,6 +138,23 @@ const ShopDetailPage: React.FC<ShopDetailPageProps> = ({ shop, onClose, onShopDa
                     {currentShopData.description}
                  </p>
               </div>
+
+              {videoId && (
+                <div className="mb-6 pb-6 border-b border-pink-100">
+                  <h2 className="text-xl font-semibold text-gray-700 mb-4">
+                      <i className="fab fa-youtube mr-2 text-red-500"></i>샵 영상
+                  </h2>
+                  <div className="aspect-video rounded-lg overflow-hidden shadow-lg bg-black">
+                      <iframe
+                          src={`https://www.youtube.com/embed/${videoId}`}
+                          title="YouTube video player"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                      ></iframe>
+                  </div>
+                </div>
+              )}
 
               {currentShopData.detailedServices && currentShopData.detailedServices.length > 0 && (
                 <div className="mb-6 pb-6 border-b border-pink-100">

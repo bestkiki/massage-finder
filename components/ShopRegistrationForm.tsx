@@ -13,6 +13,7 @@ const getInitialShopData = (): Omit<MassageShop, 'id'> => ({
   description: '',
   address: '',
   imageUrl: '',
+  youtubeUrl: '',
   rating: 0,
   reviewCount: 0,
   viewCount: 0,
@@ -20,7 +21,7 @@ const getInitialShopData = (): Omit<MassageShop, 'id'> => ({
   phoneNumber: '',
   operatingHours: '',
   detailedServices: [],
-  isRecommended: false, // Initialize isRecommended
+  isRecommended: false,
 });
 
 const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingShop, onShopSaved, onCancelEdit }) => {
@@ -39,6 +40,7 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
         description: existingShop.description,
         address: existingShop.address,
         imageUrl: existingShop.imageUrl,
+        youtubeUrl: existingShop.youtubeUrl || '',
         rating: existingShop.rating,
         reviewCount: existingShop.reviewCount || 0,
         viewCount: existingShop.viewCount || 0,
@@ -46,7 +48,7 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
         phoneNumber: existingShop.phoneNumber,
         operatingHours: existingShop.operatingHours,
         detailedServices: Array.isArray(existingShop.detailedServices) ? existingShop.detailedServices : [],
-        isRecommended: existingShop.isRecommended || false, // Set isRecommended from existingShop
+        isRecommended: existingShop.isRecommended || false,
       });
       setServicesPreviewInput(existingShop.servicesPreview.join(', '));
     } else {
@@ -119,12 +121,13 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
     const finalShopData: Omit<MassageShop, 'id'> = {
       ...shopData,
       imageUrl: shopData.imageUrl.trim() || 'https://picsum.photos/seed/defaultshop/600/400',
+      youtubeUrl: shopData.youtubeUrl?.trim() || '',
       servicesPreview: servicesPreviewInput.split(',').map(s => s.trim()).filter(s => s),
       detailedServices: filteredDetailedServices,
       rating: Math.max(0, Math.min(5, Number(shopData.rating) || 0)),
       reviewCount: Number(shopData.reviewCount) || 0,
       viewCount: Number(shopData.viewCount) || 0,
-      isRecommended: shopData.isRecommended || false, // Ensure isRecommended is included
+      isRecommended: shopData.isRecommended || false,
     };
 
     setIsSubmitting(true);
@@ -206,8 +209,32 @@ const ShopRegistrationForm: React.FC<ShopRegistrationFormProps> = ({ existingSho
           </p>
         </div>
         <div>
+          <label htmlFor="youtubeUrl" className={commonLabelClass}>
+            YouTube 영상 URL
+          </label>
+           <input
+              type="url"
+              name="youtubeUrl"
+              id="youtubeUrl"
+              value={shopData.youtubeUrl}
+              onChange={handleChange}
+              className={commonInputClass}
+              placeholder="https://www.youtube.com/shorts/..."
+            />
+             <p className="mt-1 text-xs text-slate-500">
+              샵 소개 영상 URL을 입력하세요. (YouTube, Shorts 포함)
+            </p>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <div>
           <label htmlFor="rating" className={commonLabelClass}>평점 (0-5)</label>
           <input type="number" name="rating" id="rating" value={shopData.rating} onChange={handleChange} min="0" max="5" step="0.1" className={commonInputClass} />
+        </div>
+        <div>
+          <label htmlFor="reviewCount" className={commonLabelClass}>리뷰 수</label>
+          <input type="number" name="reviewCount" id="reviewCount" value={shopData.reviewCount} onChange={handleChange} min="0" step="1" className={commonInputClass} />
         </div>
       </div>
       

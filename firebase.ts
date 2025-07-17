@@ -90,7 +90,8 @@ export const fetchShopsFromFirestore = async (): Promise<MassageShop[]> => {
         phoneNumber: data.phoneNumber || '연락처 없음',
         operatingHours: data.operatingHours || '운영 시간 정보 없음',
         detailedServices: processedDetailedServices,
-        isRecommended: typeof data.isRecommended === 'boolean' ? data.isRecommended : false, // Fetch isRecommended
+        isRecommended: typeof data.isRecommended === 'boolean' ? data.isRecommended : false,
+        youtubeUrl: data.youtubeUrl || undefined,
       });
     });
     return shops;
@@ -110,7 +111,8 @@ export const addShopToFirestore = async (shopData: Omit<MassageShop, 'id'>): Pro
       rating: shopData.rating || 0, 
       reviewCount: shopData.reviewCount || 0,
       viewCount: shopData.viewCount || 0,
-      isRecommended: shopData.isRecommended || false, // Add isRecommended
+      isRecommended: shopData.isRecommended || false,
+      youtubeUrl: shopData.youtubeUrl || null,
     });
     return docRef.id;
   } catch (error: any) {
@@ -124,7 +126,8 @@ export const updateShopInFirestore = async (shopId: string, shopData: Omit<Massa
     const shopRef = db.collection('shops').doc(shopId);
     await shopRef.update({
         ...shopData,
-        isRecommended: shopData.isRecommended || false, // Update isRecommended
+        isRecommended: shopData.isRecommended || false,
+        youtubeUrl: shopData.youtubeUrl || null,
     });
   } catch (error: any) {
     console.error(`Error updating shop ${shopId} in Firestore: `, error?.message || String(error));
